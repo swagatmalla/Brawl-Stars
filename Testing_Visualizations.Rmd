@@ -1,0 +1,210 @@
+---
+title: "Project_Brawl2"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(AER)
+library(tidyverse)
+enjoyability <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/enjoyability.rds")
+brawler_stats <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/brawler_stats.rds")
+
+AlmightyList <- read.csv("~/Mscs 264 F21/Project/Ian and Swagat/Almighty_List.csv")
+test <- AlmightyList %>% filter(month == "2021-07-16")
+test2 <- as.tibble(test)
+library(plotly)
+library(ggplot2)
+library(gapminder)
+
+```
+
+
+
+
+```{r, echo=FALSE}
+classes <- (enjoyability %>% count(class))$class
+
+
+titlePanel("Enjoyability of Character Archetypes")
+
+inputPanel(
+  selectInput("class",
+              label = "class:",
+              choices = classes)
+)
+
+# p <- ggplot(gapminder, aes(gdpPercap, lifeExp, color = continent)) +
+#   geom_point(aes(size = pop, frame = year, ids = country)) +
+#   scale_x_log10()
+
+# renderPlot({
+#   test2 %>%
+#     filter(gamemode == "volley_brawl",
+#            !is.na(usage)) %>%
+#     select(-1) %>%
+#     group_by(brawler) %>%
+#     summarise(win = sum(win),
+#               usage= sum(usage),
+#               win_rate = win/usage) %>%
+#     arrange(desc(usage)) %>%
+#     head(n, n = 10) %>%
+#   ggplot(aes(x = fct_reorder(brawler, usage), y = usage, fill = win_rate)) +
+#     geom_col(show.legend = FALSE) +
+#     coord_flip() +
+#     labs( x = "Brawlers", y = "Usage")
+# })
+
+
+renderPlotly({
+    AlmightyList %>%
+      filter(gamemode == "gem_grab",
+             !is.na(usage)) %>%
+      select(-1) %>%
+      group_by(brawler) %>%
+      summarise(win = sum(win),
+                usage= sum(usage),
+                win_rate = win/usage) %>%
+      arrange(desc(usage)) %>%
+      head(n, n = 1) %>%
+    ggplot(aes(x = brawler, y = usage, fill = win_rate)) +
+      geom_point(aes(frame = frame_cnt), show.legend = FALSE)+
+      coord_flip() +
+      labs( x = "Usage", y = "Brawlers")
+})
+
+
+# renderPlot({
+#   ggplotly(AlmightyList %>%
+#       filter(gamemode == "gem_grab",
+#              !is.na(usage)) %>%
+#       select(-1) %>%
+#       group_by(brawler) %>%
+#       summarise(win = sum(win),
+#                 usage= sum(usage),
+#                 win_rate = win/usage) %>%
+#       arrange(desc(usage)) %>%
+#       head(n, n = 10) %>%
+#     ggplot(aes(x = fct_reorder(brawler, usage), y = usage, fill = win_rate)) +
+#       geom_col(aes(frame = frame_cnt), show.legend = FALSE)+
+#       coord_flip() +
+#       labs( x = "Usage", y = "Brawlers"))
+# })
+
+# theme = "simple_white"
+```
+
+
+
+
+```{r, echo=FALSE}
+classes <- (enjoyability %>% count(class))$class
+
+
+titlePanel("Enjoyability of Character Archetypes")
+
+inputPanel(
+  selectInput("class",
+              label = "class:",
+              choices = classes)
+)
+
+renderPlot({
+  enjoyability %>%
+    filter(class == input$class) %>%
+  ggplot(aes(x = fct_reorder(Brawler, desc(rate_dif)), y = rate_dif)) +
+    geom_col(show.legend = FALSE)+
+    labs( x = "Brawlers", y = "Enjoyability")
+})
+```
+
+
+
+```{r, echo = FALSE}
+
+titlePanel("Ranking Characters By Specific Stats")
+
+inputPanel(
+  selectInput(
+    "x", label = "Character Stat",
+    choices = c("Health" = "health",
+                "Reload Speed" = "max_reload", 
+                "Movement Speed" = "max_movement_speed", 
+                "Super Width" = "max_super_width", 
+                "Attack Width" = "max_attack_width", 
+                "Attack Projectile Speed" = "max_attack_proj.spd", 
+                "Supper Projectile Speed" = "max_super_proj.spd")
+ )
+)
+
+renderPlot({
+    if (input$x == "health"){
+    brawler_stats %>%
+      ggplot()+
+    geom_col(mapping = aes_string(x = "fct_reorder(brawler, health)", y = input$x),
+             stat = "identity")+ 
+    coord_flip()+
+        labs(x = "Brawlers", y = "Health")}
+    else if(input$x == "max_reload"){
+      brawler_stats %>%
+    ggplot()+
+    geom_col(mapping = aes_string(x = "fct_reorder(brawler, max_reload)",
+                                  y = input$x),
+             stat = "identity")+ 
+    coord_flip()+
+        labs(x = "Brawlers", y = "Reload Time")}
+    else if(input$x == "max_movement_speed"){
+      brawler_stats %>%
+    ggplot()+
+    geom_col(mapping = aes_string(x = "fct_reorder(brawler, max_movement_speed)",
+                                  y = input$x),
+             stat = "identity")+ 
+    coord_flip()+
+        labs(x = "Brawlers", y = "Movement Speed")}
+    else if(input$x == "max_super_width"){
+      brawler_stats %>%
+        filter(max_super_width != 0)%>%
+    ggplot()+
+    geom_col(mapping = aes_string(x = "fct_reorder(brawler, max_super_width)",
+                                  y = input$x),
+             stat = "identity")+ 
+    coord_flip()+
+        labs(x = "Brawlers", y = "Super Width")}
+    else if(input$x == "max_attack_width"){
+      brawler_stats %>%
+      filter(max_attack_width != 0) %>%
+      ggplot()+
+      geom_col(mapping = aes_string(x = "fct_reorder(brawler, max_attack_width)",
+                                  y = input$x),
+             stat = "identity")+ 
+    coord_flip()+
+        labs(x = "Brawlers", y = "Attack Width")}
+    else if(input$x == "max_attack_proj.spd")
+      brawler_stats %>%
+    filter(max_attack_proj.spd != 0) %>%
+      ggplot()+
+      geom_col(mapping = aes_string(x = "fct_reorder(brawler,max_attack_proj.spd)",
+                                  y = input$x),
+             stat = "identity")+ 
+    coord_flip()+
+    labs(x = "Brawlers", y = "Attack Projectile Speed")
+    else if(input$x == "max_super_proj.spd"){
+      brawler_stats %>%
+    filter(max_super_proj.spd != 0) %>%
+      ggplot()+
+      geom_col(mapping = aes_string(x = "fct_reorder(brawler,max_super_proj.spd)",
+                                  y = input$x),
+             stat = "identity")+ 
+    coord_flip()+
+    labs(x = "Brawlers", y = "Super Projectile Speed")
+      
+    }
+    
+    
+    
+})
+
+
+
+```

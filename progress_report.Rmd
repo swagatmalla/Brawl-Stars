@@ -1,0 +1,292 @@
+---
+title: "Stats_WebScraping"
+output:
+  html_document: default
+  pdf_document:
+    fig_height: 3
+    fig_width: 4.5
+word_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+## Setup
+
+```{r, setup, include=FALSE}
+library(tidyverse)
+library(stringr)
+library(rvest)
+```
+
+## Functions
+
+```{r}
+# Necessary for maxminAS()
+
+compareAS <- function(pos, sPos, AS) {
+  output <- 0
+  for (i in pos) {
+    if(sPos > i & AS == "Attack"){
+      output <- i
+      break
+    } else if (sPos < i & AS == "Super") {
+      output <- i
+      break
+    }
+  }
+  output
+}
+```
+
+```{r}
+# maxminAS()
+# Used in Projectile Speed, Range, and Super Recharge
+
+maxminAS <- function(stat, m, AS) {
+  vec2 = c()
+  for(i in 1:52){
+    names_vec = c()
+    brawl_characters <- read_html(url[i])
+    brawl_characters <- html_elements(brawl_characters, ".pi-item-spacing .pi-font , .pi-secondary-font")
+    brawl_characters2 <- str_replace_all(as.character(brawl_characters), "<br>", ", ")
+    for(j in 1:length(brawl_characters)){
+      names_vec[j] <- html_text(brawl_characters[j])
+    }
+    name_pos <- str_which(names_vec, stat)
+    super_pos <- str_which(names_vec, "^Super$")
+    
+    m_index <- compareAS(name_pos, super_pos, AS)
+    if(length(name_pos) != 0 & m_index != 0) {
+      val <- str_extract(brawl_characters2[m_index + 1], ">(.)*<")
+      
+      spawnable_list = c("Scrappy", "porter", "cannonball")
+      spawnable = FALSE
+      for(n in spawnable_list) {
+        if(str_detect(val, n)) {
+          spawnable = TRUE
+        }
+      }
+      
+      # print(val)
+      # print(i)
+      
+      val <- str_split(val, "[,-]")[[1]]
+      key_words = c("(m|M)echa", "(l|L)ong", "(n|N)ormal", "(s|S)hort", "max range", "close range", "half Rage", "full Rage")
+      if(length(val) > 1){
+        key = FALSE
+        for (k in key_words) {
+          if(str_detect(val[2], k)) {
+            val_1 = parse_number(val[1])
+            val_2 = parse_number(val[2])
+            vec2[i] <- compare2(val_1, val_2, m)
+            key = TRUE
+          }
+        }
+        if(!key & spawnable) {
+          vec2[i] <- parse_number(val[2])
+        } else if(!key) {
+          vec2[i] <- parse_number(val[1])
+        }
+      } else {
+        vec2[i] <- parse_number(val)
+      }
+    } else {
+      vec2[i] <- 0
+    }
+  }
+  vec2
+}
+```
+
+```{r}
+# Necessary for maxmin()
+
+compare2 <- function(first, second, M) {
+  bigger = 0
+  smaller = 0
+  if(first > second){
+    bigger = first
+    smaller = second
+  } else{
+    bigger = second
+    smaller = first
+  }
+
+  ifelse(M == "max",
+         bigger,
+         smaller)
+}
+```
+
+```{r}
+# maxmin()
+# Used for Movement Speed, Reload Speed, Super Width, and Attack Width
+
+maxmin <- function(stat, m) {
+  vec = c()
+  for(i in 1:52){
+    names_vec = c()
+    brawl_characters <- read_html(url[i])
+    brawl_characters <- html_elements(brawl_characters, ".pi-item-spacing .pi-font , .pi-secondary-font")
+    for(j in 1:length(brawl_characters)){
+      names_vec[j] <- html_text(brawl_characters[j])
+    }
+    name_pos <- str_which(names_vec, stat)
+    
+    if(length(name_pos) == 0){
+      vec[i] <- 0
+    } else {
+      new_name <- str_split(names_vec[name_pos + 1], "[)]")
+      ifelse(length(new_name[[1]]) == 3 & !str_detect(new_name[[1]], "with"),
+             vec[i] <- compare2(parse_number(new_name[[1]][1]), parse_number(new_name[[1]][2]), m),
+             vec[i] <- parse_number(new_name[[1]][1]))
+    }
+  }
+  vec
+}
+```
+
+## Acquiring data
+
+```{r}
+## Starting to acquire data
+robotstxt::paths_allowed("https://brawlstats.com/wiki/brawlers")
+character_data <- read_html("https://brawlstats.com/wiki/brawlers")
+character_data <- html_elements(character_data, "._1ItE79t5XN5fp5Htmi6dBn ._21sSMvccqXG6cJU-5FNqzv:nth-child(1)")
+character_data <- html_text2(character_data)
+character_data <- character_data[-1 * (seq(4, 208, by = 4))] %>%
+                    str_replace("%", "")
+
+character_name <- character_data[seq(1, 154, by = 3)]
+character_winrate <- parse_number(character_data[seq(2, 155, by = 3)])
+character_pickrate <- parse_number(character_data[seq(3, 156, by = 3)])
+
+brawlers <- character_name
+
+brawlers <- str_replace(brawlers, "8-bit", "8-BIT")
+brawlers <- str_replace(brawlers, "Colonel Ruffs", "Colonel_Ruffs")
+brawlers <- str_replace(brawlers, "Mr. P", "Mr._P")
+brawlers <- str_replace(brawlers, "El Primo", "El_Primo")
+
+#urls
+url <- str_c("https://brawlstars.fandom.com/wiki/", brawlers)
+```
+
+```{r}
+#Health
+health_vec = c()
+for(i in 1:52){
+character_health <- read_html(url[i])
+character_health <- html_elements(character_health, ".pi-item-spacing+ .pi-collapse-open .pi-border-color:nth-child(13) .pi-item-spacing+ .pi-item-spacing")
+health_vec[i] <- parse_number(html_text(character_health))
+}
+health_vec
+```
+
+```{r}
+#Reload Speed
+min_reload_vec = maxmin("Reload", "min")
+max_reload_vec = maxmin("Reload", "max")
+```
+
+```{r}
+#Movement Speed
+min_movement_vec = maxmin("Movement speed", "min")
+max_movement_vec = maxmin("Movement speed", "max")
+```
+
+```{r}
+#Super width
+min_super_width = maxmin("Super width", "min")
+max_super_width = maxmin("Super width", "max") 
+```
+
+```{r}
+#Attack width
+min_attack_width = maxmin("Attack width", "min")
+max_attack_width = maxmin("Attack width", "max")
+```
+
+```{r}
+#Class
+class_vec = c()
+for(i in 1:52){
+character_class <- read_html(url[i])
+character_class<- html_elements(character_class, ".pi-image~ .pi-border-color:nth-child(4) .pi-font")
+class_vec[i] <- html_text(character_class)
+}
+class_vec
+```
+
+```{r}
+#Projectile speed
+min_attack_proj.spd = maxminAS("Projectile speed", "min", "Attack")
+max_attack_proj.spd = maxminAS("Projectile speed", "max", "Attack")
+min_super_proj.spd = maxminAS("Projectile speed", "min", "Super")
+max_super_proj.spd = maxminAS("Projectile speed", "max", "Super")
+```
+
+```{r}
+#Range
+min_attack_range = maxminAS("Range", "min", "Attack")
+max_attack_range = maxminAS("Range", "max", "Attack")
+min_super_range = maxminAS("Range", "min", "Super")
+max_super_range = maxminAS("Range", "max", "Super")
+```
+
+```{r}
+#Super charge per hit
+min_attack_charge.rate = maxminAS("Super charge per hit", "min", "Attack")
+max_attack_charge.rate = maxminAS("Super charge per hit", "max", "Attack")
+min_super_charge.rate = maxminAS("Super charge per hit", "min", "Super")
+max_super_charge.rate = maxminAS("Super charge per hit", "max", "Super")
+```
+
+## Exporting files
+
+```{r}
+  #tibble 1
+  winrate_pickrate <- tibble(Brawler = character_name, 
+                           WinRate = character_winrate, 
+                           PickRate = character_pickrate)
+
+  #tibble 2
+  enjoyability_tibble <- winrate_pickrate %>%
+    mutate(class = class_vec) %>%
+    arrange(desc(WinRate)) %>%
+    mutate(WR_perc = seq(1:52)) %>%
+    arrange(desc(PickRate)) %>%
+    mutate(PR_perc = seq(1:52)) %>%
+    mutate(rate_dif = WR_perc - PR_perc) %>%
+    select(Brawler, class, rate_dif)
+  
+  #tibble 3
+  
+  brawler_stats <- tibble(brawler = character_name, 
+                          class = class_vec, 
+                          health = health_vec, 
+                          min_reload = min_reload_vec, 
+                          max_reload = max_reload_vec, 
+                          min_movement_speed = min_movement_vec, 
+                          max_movement_speed = max_movement_vec, 
+                          min_super_width = min_super_width, 
+                          max_super_width = max_super_width, 
+                          min_attack_width = min_attack_width, 
+                          max_attack_width = max_attack_width,
+                          min_attack_proj.spd = min_attack_proj.spd,
+                          max_attack_proj.spd = max_attack_proj.spd,
+                          min_super_proj.spd = min_super_proj.spd,
+                          max_super_proj.spd = max_super_proj.spd
+
+
+  )
+
+  write_rds(enjoyability_tibble, "~/Mscs 264 F21/Project/Ian and Swagat/enjoyability.rds")
+  write_rds(winrate_pickrate, "~/Mscs 264 F21/Project/Ian and Swagat/winrate_pickrate.rds")
+  write_rds(brawler_stats, "~/Mscs 264 F21/Project/Ian and Swagat/brawler_stats.rds")
+
+
+```
+
+
+

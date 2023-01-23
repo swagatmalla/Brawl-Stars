@@ -1,0 +1,132 @@
+---
+title: "Dolphin Therapy for Depression"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 4.5
+  html_document: default
+  word_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+Here, we'll analyze the Dolphin Therapy study data using a Randomization Test. Basically, we'll do the cards procedure in `R` instead of by hand, and thousands of times instead of just a few times.
+
+First, load the necessary packages.
+
+```{r message=FALSE}
+library(tidyverse)
+
+# These are the two lines you need to do the randomization test!!!!
+library(infer)
+source("~/Stats 212b S22/Class/Data/randomization_functions.R")
+```
+
+Then, load the Dolphin Therapy data that is contained in **Dolphins.csv** on the `R` server.
+
+```{r message=FALSE}
+dolphins <- read_csv("~/Stats 212b S22/Class/Data/Dolphins.csv")
+```
+
+This dataset contains 30 records (one for each subject).
+
+```{r, eval = FALSE}
+# Note: Because I say "eval = FALSE" above, this will not show up in your knitted file.
+View(dolphins)
+```
+
+Here we use `R` to construct the contingency table for the cross-tabulated data using the `table()` function and then plot their relationship.  
+
+```{r}
+dtable <- table(dolphins$Treatment, dolphins$Outcome)
+dtable 
+```
+
+Take a look at the code below. Discuss with your table:
+
+  - How do we know we should create a bar chart?
+  
+  - Which part of the code tells R to make a bar chart? 
+  
+  - Which part of the code tells R the dataset to use?
+  
+  - Which part of the code tells R to make a segmented bar chart (groups stacked, and proportion on the y axis)?
+  
+  - Why do we put Treatment on the x-axis?
+  
+```{r}
+ggplot(data = dolphins, aes(x=Treatment, fill=Outcome)) + 
+  geom_bar(position = "fill")+
+  labs(title="Dolphins and Depression")
+```
+
+The proportion improving for the dolphin therapy and control groups are provided below.
+
+```{r}
+dtable
+addmargins(dtable)
+prop.table(dtable, 1)
+
+
+obs_diffinprop <- 10/15 - 3/15
+obs_diffinprop
+```
+
+We observe a difference of `r round(obs_diffinprop,4)*100`% between the two groups with respect to the proportion improving. This is our observed **test statistic**.  Again, we face our **\textcolor{blue}{key question}**: could the observed difference happen just by chance?  Or: how often would we observe a difference this large if dolphin therapy was no better than control?  
+
+We'll ask `R` to replicate the cards exercise and simulate differences in proportions that we would expect to see just by chance. We'll randomly assign 30 subjects (13 of which are improvers and 17 of which are non-improvers) to be in either the Control or Dolphin Therapy group (15 in each).  We'll then calculate the simulated (random) difference in the proportion improving for the two groups. We'll repeat this a large number of times and get a good idea of what the differences in proportions would look like if there really is no difference in the probability of improvement for the two groups. Basically, we are *simulating differences in proportions under the null hypothesis*.
+
+
+
+First we calculate the **null distribution** using `calc_null_two_prop` and to visualize it using `visualize_hyp`. Describe the *center*, *unusual outliers*, *shape*, and *spread* of the distribution of random differences (null distribution).
+
+I reprinted our "dtable" here so that you can see where the values come from the inputs to the `calc_null_two_prop` function. We also calcualted `obs_diffinprop` above!
+
+```{r}
+dtable
+obs_diffinprop
+
+### This creates a new object called "null_table" which will be inputs to visualize_hyp and calc_pvalue
+null_table <- calc_null_two_prop(control_yes = 3, control_no = 12,
+                                 treat_yes = 10, treat_no = 5,
+                                 num_sim = 1000)
+
+visualize_hyp(null_table, obs_diffinprop, "right")
+```
+
+
+The observed difference of `r obs_diffinprop` is indicated by the red line.  We can calculate a one-sided p-value by counting the number of simulated differences at or above the red line and dividing by the number of simulations we ran (1000) using the function `calc_pvalue`: 
+
+```{r}
+calc_pvalue(null_table, obs_diffinprop, "right")
+```
+
+Let's return to our questions from the Dolphin Lab:
+
+1. Based on the simulated data from `R`, how unlikely is it to get a difference in proportions of $\frac{7}{15}$ or more if there's really no effect of dolphin therapy?  
+
+Something close to 0.015... it will vary a litte bit (due to randomization!) but the number you get from `calc_pvalue` is the number here. In other words, about 1.5% of the time, we'd see a difference this big if there truly were no efffect of dolphin therapy.
+
+2. Based on the simulated data from `R`, how would you answer the **\textcolor{blue}{key question}**: how unlikely is it for the random assignment process alone to place 10 or more of these 13 who showed improvement into the dolphin therapy group?  
+
+This is a different way of wording the same thing... We'd only see 10 or more of the 13 in the dolphin group about 1.5% of the time.
+
+3. What if we wanted to find out if dolphin therapy is significantly *different from* (not necessarily *better than*) control?  That is, what if we wanted to find a **two-sided p-value**.  Adjust the `R` code to do this. 
+
+
+```{r}
+visualize_hyp(null_table, obs_diffinprop, "both")
+calc_pvalue(null_table, obs_diffinprop, "both")
+```
+
+4. Can you claim that dolphin therapy is *statistically significantly* better than control?  Why or why not?  
+
+YES!!!!  All of the following statements are basically equivalent:
+
+The p-value (0.015) is less than 0.05. 
+
+We reject the null hypothesis.
+
+The difference between dolphin and control is unlikely to have happened just by random chance.
+
+The difference between dolphin and control groups is statistically significant.(And dolphin is significantly BETTER).

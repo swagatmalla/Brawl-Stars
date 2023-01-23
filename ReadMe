@@ -1,0 +1,48 @@
+An Explanation to our files and their purpose
+----------------------------------------------------------
+
+** Brawl.Rmd - Our main file used to display our graphs and showcase everything we have
+
+* progress_report.Rmd - The data we gathered
+* testing.Rmd - Mainly used for testing purposes, but contains experimental data and graphs that we either didn't get to finishing or couldn't finish because we were restricted to the tools available from flexdashboard
+* Testing_Visualizations.Rmd - Another file for testing purposes. Focused on visualizations
+* webscraping.Rmd - The data we gathered from webscrapping
+
+===========================================================
+
+* Almighty_List.csv - Experimental dataset that we wanted to use to illustrate how character rise and fall out of being competitive
+* map_ALL.csv
+  map_Bot_Drop.csv
+  map_Junk_Park.csv
+  map_Mecha_Match.csv
+  map_Nuts_&_Bolts.csv
+  map_Olive_Branch.csv
+  map_Robo_Highway.csv
+  map_Some_Assembly_Required.csv - These were all used for the Violin data
+  
+===========================================================
+
+* BS.jpg - Image in our "About" page
+* bslogo.png - Logo image in the top right
+
+===========================================================
+
+* avg_level_diff.rds - dataset used to find the difference between level
+* avg_trophy_diff.rds - dataset used to find the difference between trophies
+* brawler_stats.rds - webscrapped dataset used to get the stats of brawlers
+* compData.rds - dataset on map comps
+* country_winnings.rds - dataset on winnings from each country
+* enjoyability.rds - dataset using win rate and usage rate to find enjoyability of brawlers
+** plot_siege2.rds - dataset used for a big chunk of our data. If we had more time, we would look at other gamemodes
+* plot_bounty2.rds
+* plot_brawlBall2.rds
+* plot_gemGrab2.rds
+* plot_heist2.rds
+* plot_hotZone2.rds
+* plot_presentPlunder2.rds - meaningful but unused datasets
+
+* winrate_pickrate.rds - dataset used for finding enjoyability
+
+============================================================
+
+* 600_Gamemodes - tons of data that could have been used to find the shift in competitive brawlers over time, but flexdashboard didn't give us the tools needed to recreate this how we wanted

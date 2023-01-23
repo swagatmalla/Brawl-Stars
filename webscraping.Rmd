@@ -1,0 +1,558 @@
+---
+title: "Stats_WebScraping"
+output:
+  html_document: default
+  pdf_document:
+    fig_height: 3
+    fig_width: 4.5
+word_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r, setup, include=FALSE}
+library(tidyverse)
+library(stringr)
+library(rvest)
+library(wordcloud)
+library(tidytext)
+library(ggplot2)
+library(dplyr)
+```
+
+
+```{r}
+robotstxt::paths_allowed("https://brawlstats.com/profile/9CG2GY8")
+robotstxt::paths_allowed("https://brawlstats.com/wiki/brawlers")
+
+brawlers = c()
+for (b in 0:53) {
+  if (b < 10) {
+    n = str_c("0", b)
+    url <- str_c("https://brawlstats.com/profile/9CG2GY8?b=160000", n)
+  } else {
+    url <- str_c("https://brawlstats.com/profile/9CG2GY8?b=160000", b)
+  }
+  print(b)
+  new_brawler_data <- read_html(url)
+  new_brawler_data <- html_elements(new_brawler_data, "._2g-y7uLVhYNi0QnAqFRCG0")
+  new_brawler_data <- html_text2(new_brawler_data)
+  if(length(new_brawler_data) > 0) {
+    brawlers[length(brawlers) + 1] <- new_brawler_data
+  }
+}
+
+url <- str_c("https://brawlstars.fandom.com/wiki/", brawlers)
+```
+
+```{r}
+# robotstxt::paths_allowed("https://pixelcrux.com/Brawl_Stars/Brawlers/#")
+# robotstxt::paths_allowed("https://brawlstats.com/wiki/brawlers")
+# character_data <- read_html("https://brawlstats.com/wiki/brawlers")
+# character_data <- html_elements(character_data, "._1ItE79t5XN5fp5Htmi6dBn ._21sSMvccqXG6cJU-5FNqzv:nth-child(1)")
+# character_data <- html_text2(character_data)
+# character_data <- character_data[-1 * (seq(4, 208, by = 4))] %>%
+#                     str_replace("%", "")
+# 
+# character_name <- character_data[seq(1, 154, by = 3)]
+# character_winrate <- parse_number(character_data[seq(2, 155, by = 3)])
+# character_pickrate <- parse_number(character_data[seq(3, 156, by = 3)])
+# 
+# winrate_pickrate <- tibble(Brawler = character_name, 
+#                            WinRate = character_winrate, 
+#                            PickRate = character_pickrate)
+# 
+# 
+# brawlers <- winrate_pickrate$Brawler
+# 
+# brawlers <- str_replace(brawlers, "8-bit", "8-BIT")
+# brawlers <- str_replace(brawlers, "Colonel Ruffs", "Colonel_Ruffs")
+# brawlers <- str_replace(brawlers, "Mr. P", "Mr._P")
+# brawlers <- str_replace(brawlers, "El Primo", "El_Primo")
+# # Adjusting some links that weren't working
+# 
+# url <- str_c("https://brawlstars.fandom.com/wiki/", brawlers)
+
+# Movement Speed (done)
+# Health (done)
+# Range (done)
+# Reload Speed (done)
+# Super charge per Proj. (done)
+# Proj. Speed   
+# Proj. Width
+# Damage                                Damage * Proj. Count
+
+
+
+# S.Throw Range
+# S.Super charge per Proj.
+# S.Proj. Speed
+# S.Proj. Width
+# S.Movement Speed
+# S.Range
+# S.Reload Speed
+# S.Health
+# S.Secondary Health
+
+```
+
+
+
+```{r}
+# Movement Speed
+speed_vec = c()
+for(i in 1:52){
+character_speed <- read_html(url[i])
+character_speed <- html_elements(character_speed, ".pi-layout-default > .pi-border-color:nth-child(5) .pi-font")
+speed_vec[i] <- html_text(character_speed)
+}
+
+speed_vec
+
+#Health
+
+health_vec = c()
+for(i in 1:52){
+character_health <- read_html(url[i])
+character_health <- html_elements(character_health, ".pi-item-spacing+ .pi-collapse-open .pi-border-color:nth-child(13) .pi-item-spacing+ .pi-item-spacing")
+health_vec[i] <- html_text(character_health)
+}
+health_vec
+
+#Range
+range_vec = c()
+for(i in 1:52){
+  if(i == 7| i == 25| i == 37| i ==52){
+    character_range <- read_html(url[i])
+    character_range <- html_elements(character_range, ".pi-secondary-background+ .pi-item-spacing .pi-font")
+    range_vec[i] <- html_text(character_range)
+  }
+
+  else{
+    character_range <- read_html(url[i])
+    character_range <- html_elements(character_range, ".pi-collapse-open:nth-child(8) .pi-secondary-background+ .pi-border-color .pi-font")
+    range_vec[i] <- html_text(character_range)
+  }
+}
+range_vec
+
+#Reload Speed
+reload_vec = c()
+for(i in 1:52){
+if(i == 48){
+  reload_vec[i] = NA
+}
+else{
+character_reloadspeed <- read_html(url[i])
+character_reloadspeed <- html_elements(character_reloadspeed, ".pi-border-color+ .pi-item-spacing:nth-child(3) .pi-font")
+reload_vec[i] <- html_text(character_reloadspeed)
+}
+}
+reload_vec
+
+# Super charge per Proj.
+url_pixelcrux <- str_c("https://pixelcrux.com/Brawl_Stars/Brawlers/#", brawlers)
+
+superChargePerHit_vec = c()
+for(i in 1:52){
+character_scharge_perhit <- read_html(url[i])
+character_scharge_perhit <- html_elements(character_scharge_perhit, ".pi-item-spacing .pi-font")
+superChargePerHit_vec[i] <- str_subset(html_text(character_scharge_perhit), "%")[1] 
+}
+superChargePerHit_vec
+
+
+
+# Proj. Speed PROBLEM HERE!
+projSpeed_vec = c()
+for(i in 1:52){
+character_projspeed <- read_html(url[1])
+character_projspeed<- html_elements(character_projspeed, ".pi-item-spacing .pi-font")
+projSpeed_vec[1] <-str_subset(html_text(character_projspeed), "\\d{4}")[1]
+}
+projSpeed_vec
+
+```
+
+```{r}
+#Class
+class_vec = c()
+for(i in 1:52){
+character_class <- read_html(url[i])
+character_class<- html_elements(character_class, ".pi-image~ .pi-border-color:nth-child(4) .pi-font")
+class_vec[i] <- html_text(character_class)
+}
+class_vec
+
+
+```
+
+```{r}
+key <- c("Attack width", "Super width", "Attack spread", "Super spread", "Projectile speed")
+
+for(h in key){
+  key_name <- h
+
+  sSpread_vec = c()
+  names_vec = c()
+  for(i in 1:52){
+    character_sSpread <- read_html(url[i])
+    character_sSpread <- html_elements(character_sSpread, ".pi-item-spacing .pi-font , .pi-secondary-font")
+    for(j in 1:length(character_sSpread)){
+      names_vec[j] <- html_text(character_sSpread[j])
+    }
+    name_pos <- str_which(names_vec, key_name)
+    # Used to find the stat position we want
+    
+    ifelse(length(name_pos) == 0,
+           sSpread_vec[i] <- 0,
+           sSpread_vec[i] <- parse_number(names_vec[name_pos + 1]))
+    # Used to catch integer(0) values and replace them with '0'
+  }
+  
+  print(h)
+  print(sSpread_vec)
+  print("##########################################################")
+}
+
+# Super width is buggy
+```
+
+```{r}
+compare2 <- function(first, second, M) {
+  bigger = 0
+  smaller = 0
+  if(first > second){
+    bigger = first
+    smaller = second
+  } else{
+    bigger = second
+    smaller = first
+  }
+
+  ifelse(M == "max",
+         bigger,
+         smaller)
+}
+
+compareAS <- function(pos, sPos, AS) {
+  output <- 0
+  for (i in pos) {
+    if(sPos > i & AS == "Attack"){
+      output <- i
+      break
+    } else if (sPos < i & AS == "Super") {
+      output <- i
+      break
+    }
+  }
+  output
+}
+
+maxmin <- function(stat, m) {
+  vec = c()
+  for(i in 1:52){
+    names_vec = c()
+    brawl_characters <- read_html(url[i])
+    brawl_characters <- html_elements(brawl_characters, ".pi-item-spacing .pi-font , .pi-secondary-font")
+    for(j in 1:length(brawl_characters)){
+      names_vec[j] <- html_text(brawl_characters[j])
+    }
+    name_pos <- str_which(names_vec, stat)
+    
+    if(length(name_pos) == 0){
+      vec[i] <- 0
+    } else {
+      new_name <- str_split(names_vec[name_pos + 1], "[)]")
+      ifelse(length(new_name[[1]]) == 3 & !str_detect(new_name[[1]], "with"),
+             vec[i] <- compare2(parse_number(new_name[[1]][1]), parse_number(new_name[[1]][2]), m),
+             vec[i] <- parse_number(new_name[[1]][1]))
+    }
+  }
+  vec
+}
+
+maxmin("Reload", "min")
+maxmin("Reload", "max")
+maxmin("Movement speed", "min")
+maxmin("Movement speed", "max")
+maxmin("Super width", "min")
+maxmin("Super width", "max")
+
+maxminAS <- function(stat, m, AS) {
+  vec2 = c()
+  for(i in 1:52){
+    names_vec = c()
+    brawl_characters <- read_html(url[i])
+    brawl_characters <- html_elements(brawl_characters, ".pi-item-spacing .pi-font , .pi-secondary-font")
+    brawl_characters2 <- str_replace_all(as.character(brawl_characters), "<br>", ", ")
+    for(j in 1:length(brawl_characters)){
+      names_vec[j] <- html_text(brawl_characters[j])
+    }
+    name_pos <- str_which(names_vec, stat)
+    super_pos <- str_which(names_vec, "^Super$")
+    
+    m_index <- compareAS(name_pos, super_pos, AS)
+    if(length(name_pos) != 0 & m_index != 0) {
+      val <- str_extract(brawl_characters2[m_index + 1], ">(.)*<")
+      
+      spawnable_list = c("Scrappy", "porter", "cannonball")
+      spawnable = FALSE
+      for(n in spawnable_list) {
+        if(str_detect(val, n)) {
+          spawnable = TRUE
+        }
+      }
+      
+      print(val)
+      print(i)
+      
+      val <- str_split(val, ",")[[1]]
+      if(length(val) > 1){
+        if(str_detect(val[2], "Mecha")) {
+          val_1 = parse_number(val[1])
+          val_2 = parse_number(val[2])
+          vec2[i] <- compare2(val_1, val_2, m)
+        } else if(spawnable) {
+          vec2[i] <- parse_number(val[2])
+        } else {
+          vec2[i] <- parse_number(val[1])
+        }
+      } else {
+        vec2[i] <- parse_number(val)
+      }
+    } else {
+      vec2[i] <- 0
+    }
+  }
+  vec2
+}
+
+maxminAS("Projectile speed", "min", "Attack")
+maxminAS("Projectile speed", "max", "Attack")
+maxminAS("Projectile speed", "min", "Super")
+maxminAS("Projectile speed", "max", "Super")
+
+maxminAS("Range", "min", "Attack")
+maxminAS("Range", "max", "Attack")
+maxminAS("Range", "min", "Super")
+maxminAS("Range", "max", "Super")
+
+maxminAS("Super charge per hit", "min", "Attack")
+maxminAS("Super charge per hit", "max", "Attack")
+maxminAS("Super charge per hit", "min", "Super")
+maxminAS("Super charge per hit", "max", "Super")
+```
+
+```{r}
+Ammo <- c(3, 3, 3, 3,
+          3, 3, 3, 3,
+          3, 3, 3, 3,
+          3, 3, 3, 3,
+          3, 3, 3, 3,
+          3, 3, 3, 1,
+          3, 3, 3, 3,
+          3, 3, 4, 3,
+          3, 3, 40, 3,
+          3, 3, 3, 3,
+          3, 3, 3, 3,
+          3, 3, 1, 3,
+          3, 3, 3, 3)
+brawlers[2]
+
+print("Ammo")
+print(Ammo)
+```
+
+
+```{r}
+.pi-horizontal-group-no-labels
+
+c("Health", "Movement speed", "Reload speed", "Super width", "Attack width")
+c("Projectile speed", "Range", "Super charge per hit") ?Projectiles per attack
+
+
+character_sSpread <- read_html("https://pixelcrux.com/Brawl_Stars/Brawlers/#Shelly")
+character_sSpread <- html_elements(character_sSpread, "b+ span")
+
+Ammo <- c("3", "3", "3", "3",
+          "3", "3", "3", "3",
+          "3", "3", "3", "3",
+          "3", "3", "3", "3",
+          "3", "3", "3", "3",
+          "3", "3", "3", "1",
+          "3", "3", "3", "3",
+          "3", "3", "4", "3",
+          "3", "3", "40", "3",
+          "3", "3", "3", "3",
+          "3", "3", "3", "3",
+          "3", "3", "1", "3",
+          "3", "3", "3", "3")
+
+#Damage
+```
+
+```{r}
+# Class webscrapping
+
+class_vec = c()
+for(i in 1:52){
+  character_class <- read_html(url[i])
+  character_class<- html_elements(character_class, ".pi-image~ .pi-border-color:nth-child(4) .pi-font")
+  class_vec[i] <- html_text(character_class)
+}
+
+winPick_rates <- winrate_pickrate %>%
+  mutate(class = class_vec) %>%
+  arrange(desc(WinRate)) %>%
+  mutate(WR_perc = seq(1:52)) %>%
+  arrange(desc(PickRate)) %>%
+  mutate(PR_perc = seq(1:52)) %>%
+  mutate(rate_dif = WR_perc - PR_perc) %>%
+  select(Brawler, class, rate_dif)
+
+write_rds(winPick_rates, "~/Mscs 264 F21/Project/Ian and Swagat/rates.rds")
+```
+
+```{r}
+# Character stats
+winrate_pickrate <- tibble(Brawler = character_name, 
+                           WinRate = character_winrate, 
+                           PickRate = character_pickrate)
+```
+
+
+```{r}
+## Use this xml path for super width 
+swidth_vec = c()
+for(i in 1:52){
+character_swidth <- read_html(url[i])
+character_swidth <- html_elements(character_swidth, ".pi-collapse-open~ .pi-collapse-open+ .pi-collapse-open .pi-item-spacing .pi-font , .pi-collapse-open~ .pi-collapse-open+ .pi-collapse-open .pi-secondary-font")
+
+swidth_vec[i] <- html_text(character_swidth)
+}
+swidth_vec
+
+
+# [21] "Attack width"
+# [22] "0.67"                           
+
+# [23] "Super"                    
+
+# [24] "Range"                                 
+# [25] "6.67 (Normal)"            
+
+# [26] "Super charge per hit"                  
+# [27] "18%"                           
+
+# [28] "Projectile speed"                      
+# [29] "1522"                        
+
+# [30] "Projectile speed"                      
+# [31] "2500"                 
+
+# [32] "Super width"                           
+# [33] "1"                   
+
+# [34] "Projectile speed"                      
+# [35] "32003000 (return)" 
+
+# [36] "Super width"                           
+# [37] "1"
+```
+
+```{r}
+#MAPS 
+countryWin_data <- read_html("https://www.esportsearnings.com/games/586-brawl-stars/countries")
+countryWin_data <- html_elements(countryWin_data, css = "table")
+countryWin_data <- as.tibble(html_table(countryWin_data)[[1]])
+countryWin_data <- countryWin_data[,-1] %>% 
+                  rename("country" = "X2", 
+                         "prize_money" = "X3", 
+                         "total_players" = "X4")%>%
+                  mutate(prize_money = parse_number(prize_money), 
+                         total_players = parse_number(total_players), 
+                         percentage_of_total = prize_money/sum(prize_money))
+countryWin_data$country = str_replace_all(countryWin_data$country, "United Kingdom", "UK")
+countryWin_data$country = str_replace_all(countryWin_data$country, "United States", "USA")
+                
+                  
+
+
+countryWin_data <- left_join(countryWin_data, map_data("world"), by =c("country" = "region"))
+
+write_rds(countryWin_data, "~/Mscs 264 F21/Project/Ian and Swagat/country_winnings.rds")
+```
+
+```{r}
+# downloads and active users
+
+app_data <- read_html("https://pro.similarweb.com/#/research/companyresearch/appanalysis/engagementoverview/0_com.supercell.brawlstars/356/2020.10-2020.12?tab=UniqueInstalls&granularity=Monthly")
+app_data <- html_elements(app_data, ".cvsYYi , .DropdownButton--filtersBarDropdownButton--country .DropdownButton-text")
+app_data <- html_text2(app_data)
+app_data
+```
+
+
+
+```{r}
+#reviews
+robotstxt::paths_allowed("https://cesaryxcu356.wordpress.com/blog/")
+word_press <- read_html("https://cesaryxcu356.wordpress.com/blog/")
+word_press <- html_elements(word_press, "#post-17 p")
+word_press <- html_text2(word_press)
+word_press <- as.tibble(str_trim(word_press))
+
+word_press <- word_press %>% filter(value != "") %>%
+  unnest_tokens(word,value, token = "words")
+
+
+rubiconline <- read_html("https://www.rubiconline.com/game-review-brawl-stars-best-mobile-game-of-all-time/")
+rubiconline <- html_elements(rubiconline, ".storycontent span")
+rubiconline <- html_text2(rubiconline)
+rubiconline <- as.tibble(str_trim(rubiconline))
+rubiconline <- rubiconline %>% filter(value != "") %>%
+  unnest_tokens(word,value, token = "words")
+
+
+
+
+destructoid <- read_html("https://www.destructoid.com/--627843.phtml")
+destructoid <- html_elements(destructoid, "#postcontent_post p")
+destructoid <- html_text2(destructoid)
+destructoid <- as.tibble(str_trim(destructoid))
+destructoid <- destructoid %>% filter(value != "") %>%
+  unnest_tokens(word,value, token = "words")
+
+
+
+
+
+
+
+
+
+
+metacritic <- read_html("https://www.metacritic.com/game/ios/brawl-stars/user-reviews")
+metacritic<- html_elements(metacritic,".review_body")
+metacritic <- as.tibble(html_text2(metacritic))
+metacritic <- metacritic %>%
+  unnest_tokens(word,value, token = "words")
+
+metacritic <- 
+  metacritic %>%
+  anti_join(stop_words) 
+metacritic %>%
+  filter(word != "brawl" | word != "stars" | word != "game") %>%
+  
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+  
+
+
+```
+
+
+
+

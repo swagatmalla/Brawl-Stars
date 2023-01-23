@@ -1,0 +1,696 @@
+---
+title: "Project_Brawl"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 4.5
+  html_document: default
+  word_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+
+```{r}
+plot_siege <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/plot_siege.rds")
+plot_presentPlunder <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/plot_presentPlunder.rds")
+plot_hotZone <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/plot_hotZone.rds")
+plot_heist <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/plot_heist.rds")
+plot_gemGrab <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/plot_gemGrab.rds")
+plot_brawlBall <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/plot_brawlBall.rds")
+plot_bounty <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/plot_bounty.rds")
+```
+
+
+```{r}
+plot_siege <- plot_siege %>%
+  separate(battleTime, into = c("battleDate", "battleTime"), sep = " ") %>%
+  mutate(battleDate = ymd(battleDate),
+         battleTime = parse_number(battleTime))
+  
+```
+
+count(date):
+
+```{r}
+popularity_byDate <- plot_siege %>%
+  count(battleDate)
+```
+
+count(time):
+
+```{r}
+popularity_byTime <- plot_siege %>%
+  count(battleTime)
+```
+
+count(battle__type)
+
+```{r}
+battle_typefreq <- plot_siege %>%
+  count(battle__type)
+```
+
+count(battle__duration)
+```{r}
+battle_durationfreq <- plot_siege %>%
+  count(battle__duration)
+
+```
+
+Brawler(Which character was picked):
+
+```{r}
+brawler <- plot_siege[, c(9,13,17,21,25,29)] %>%
+  pivot_longer(1:6, names_to = "player", 
+               values_to = "brawler_name") %>%
+  mutate(player = parse_number(player))
+  
+```
+
+Power level(Tells us how strong a character is)
+```{r}
+power_level <- plot_siege2[, c(10,14,18,22,26,30)] %>%
+  pivot_longer(1:6, names_to = "player", 
+               values_to = "brawler_level") %>%
+  mutate(player = parse_number(player)) %>%
+  group_by(player)
+
+
+dif_dataset = c()
+WL_dataset = c()
+TF_conversion <- function(TF) {
+  return = 0
+  
+  if (TF) {
+    return = 1
+  }
+  return
+}
+
+winning_team2 = c()
+for (i in 1:(nrow(plot_siege2))) {
+  teamW <- find_team(i, plot_siege2[i, 32])
+  winning_team2[2*i - 1] <- teamW
+  winning_team2[2*i] <- teamW
+}
+
+sample <- tibble(Team1 = rowMeans(plot_siege2[, c(10,14,18)]),
+       Team2 = rowMeans(plot_siege2[, c(22,26,30)])) %>%
+  pivot_longer(1:2, values_to = "avg_power_level", names_to = "team") %>%
+  mutate(team = parse_number(team),
+         winner = winning_team2)
+
+for (n in 1:(nrow(sample)/2)) {
+  win_TF1 = (sample[2*n - 1, 1][[1]] == sample[2*n - 1, 3][[1]])
+  win_TF2 = (sample[2*n, 1][[1]] == sample[2*n, 3][[1]])
+  WL_dataset[2*n - 1] <- TF_conversion(win_TF1)
+  WL_dataset[2*n] <- TF_conversion(win_TF2)
+  
+  val1 = sample[2*n - 1, 2][[1]]
+  val2 = sample[2*n, 2][[1]]
+  dif_dataset[2*n - 1] <- round(val1 - val2, digits = 2)
+  dif_dataset[2*n] <- round(val2 - val1, digits = 2)
+}
+
+test2 <- tibble(dif = dif_dataset,
+                WL = WL_dataset)
+
+test2 %>%
+  count(dif)
+
+test2 %>%
+  group_by(dif) %>%
+  summarize(wr = mean(WL)) %>%
+ggplot(aes(x = dif, y = wr)) +
+  geom_line()
+
+test2 %>%
+  count(dif) %>%
+ggplot(aes(x = dif, y = n)) +
+  geom_col()
+
+```
+
+Trophies(Tells us how much experience a player has with a character):
+
+```{r}
+trophies <- plot_siege[, c(11,15,19,23,27,31)] %>%
+  pivot_longer(1:6, names_to = "player", 
+               values_to = "trophies") %>%
+  mutate(player = parse_number(player))
+
+```
+
+```{r}
+# plot_siege %>%
+#   count(battle__trophyChange) %>%
+# ggplot() +
+#   geom_col(aes(x = battle__trophyChange, y = n))
+
+plot_siege %>%
+  filter(battle__type != "proLeague") %>%
+  count(battle__trophyChange) %>%
+ggplot() +
+  geom_col(aes(x = battle__trophyChange, y = n))
+
+plot_siege %>%
+  count(battleDate) %>%
+ggplot() +
+  geom_col(aes(x = battleDate, y = n))
+
+test <- plot_siege %>% head()
+
+
+```
+
+
+
+
+
+```{r}
+plot_siege2 <- read_rds("~/Mscs 264 F21/Project/Ian and Swagat/plot_siege2.rds")
+```
+
+# Functions and initial set up parameters - Part 1
+
+```{r}
+find_team <- function(row, star) {
+  team_num = -1
+  team = 0
+  for (tag in seq(8, 28, by = 4)) {
+    if (plot_siege2[row, tag] == star) {
+      team_num = parse_number(colnames(plot_siege2[tag]))
+    }
+  }
+  if (team_num == -1) {
+    team = NA
+  } else if (team_num < 4) {
+    team = 1
+  } else {
+    team = 2
+  }
+  team
+}
+
+alphabet <- function(b1, b2, b3) {
+  alpha_list_upper <- str_to_upper(sort(brawlers))
+  ordered_list = c()
+  new_list = c()
+  cnt = 1
+  for (b in c(b1, b2, b3)) {
+    ordered_list[cnt] <- which(alpha_list_upper == b)
+    cnt = cnt + 1
+  }
+  new_cnt = 1
+  for (o in order(ordered_list)) {
+    new_list[new_cnt] <- ordered_list[o]
+    new_cnt = new_cnt + 1
+  }
+  new_list
+}
+
+# # wiki version
+# brawlers <- str_replace(brawlers, "8-bit", "8-BIT")
+# brawlers <- str_replace(brawlers, "Colonel Ruffs", "Colonel_Ruffs")
+# brawlers <- str_replace(brawlers, "Mr. P", "Mr._P")
+# brawlers <- str_replace(brawlers, "El Primo", "El_Primo")
+
+# normal version
+brawlers <- str_replace(brawlers, "8-BIT", "8-bit")
+brawlers <- str_replace(brawlers, "Colonel_Ruffs", "Colonel Ruffs")
+brawlers <- str_replace(brawlers, "Mr._P", "Mr. P")
+brawlers <- str_replace(brawlers, "El_Primo", "El Primo")
+```
+
+# Responsible for Alphabetizing the Match data
+
+```{r}
+alpha_list <- sort(brawlers)
+winning_team = c()
+map_entry = c()
+ranked_entry = c()
+bcol_1 = c()
+bcol_2 = c()
+bcol_3 = c()
+tcol_4 = c()
+dcol_5 = c()
+for (i in 1:(nrow(plot_siege2))) {
+  teamW <- find_team(i, plot_siege2[i, 32])
+  winning_team[2*i - 1] <- teamW
+  winning_team[2*i] <- teamW
+  map_entry[2*i - 1] <- plot_siege2[i, 4][[1]]
+  map_entry[2*i] <- plot_siege2[i, 4][[1]]
+  ranked_entry[2*i - 1] <- plot_siege2[i, 5][[1]]
+  ranked_entry[2*i] <- plot_siege2[i, 5][[1]]
+  
+  B1 = list(as.character(plot_siege2[i,9]),
+            as.character(plot_siege2[i,13]),
+            as.character(plot_siege2[i,17]))
+  B2 = list(as.character(plot_siege2[i,21]),
+            as.character(plot_siege2[i,25]),
+            as.character(plot_siege2[i,29]))
+  team = 1
+  for (b in list(B1, B2)) {
+    brawler_list <- alphabet(b[[1]], b[[2]], b[[3]])
+    bcol_1[2*i + team-2] <- alpha_list[brawler_list[1]]
+    bcol_2[2*i + team-2] <- alpha_list[brawler_list[2]]
+    bcol_3[2*i + team-2] <- alpha_list[brawler_list[3]]
+    tcol_4[2*i + team-2] <- team
+    dcol_5[2*i + team-2] <- plot_siege2[i,6][[1]]
+    team = 2
+  }
+}
+# runtime: 3m 20s
+```
+
+# initial set up parameters - Part 2
+
+```{r}
+team_comps <- tibble(brawler_1 = bcol_1,
+                     brawler_2 = bcol_2,
+                     brawler_3 = bcol_3,
+                     team = tcol_4,
+                     W_team = winning_team,
+                     map = map_entry,
+                     ranked = ranked_entry,
+                     duration = dcol_5)
+
+list_temp <- team_comps %>% count(ranked)
+ranked_list <- list_temp[[1]]
+list_temp <- team_comps %>% count(map)
+map_list <- list_temp[[1]]
+```
+
+# Setting up and writing files for our Violin duration data
+
+```{r}
+file_names = c()
+for (m in map_list) {
+  namify = str_c("map_", as.character(m))
+  namify = str_replace_all(namify, " ", "_")
+  namify2 = str_c("~/Mscs 264 F21/Project/Ian and Swagat/", namify, ".csv")
+  file_names[which(map_list == m)] <- namify
+  file_names[which(map_list == m) + length(map_list) + 1] <- namify2
+}
+file_names[length(map_list) + 1] <- "map_ALL"
+file_names[2*(length(map_list) + 1)] <- "~/Mscs 264 F21/Project/Ian and Swagat/map_ALL.csv"
+
+for(f in 1:(length(file_names)/2)) {
+  map_name = str_replace_all(str_replace(file_names[f], "map_", ""), "_", " ")
+  check_case = FALSE
+  for (m in map_list) {
+    if (map_name == m) {
+      check_case = TRUE
+    }
+  }
+  if (check_case) {
+    init_5 <- team_comps %>%
+      filter(map == map_name)
+  } else {
+    init_5 <- team_comps
+  }
+  top_5 <- init_5 %>%
+    count(brawler_1, brawler_2, brawler_3) %>%
+    arrange(desc(n)) %>%
+    head(n = 5)
+  
+  comps = c()
+  ex_val = c()
+  ex_row = c()
+  for (i in 1:5) {
+    b1 = top_5[i,1][[1]]
+    b2 = top_5[i,2][[1]]
+    b3 = top_5[i,3][[1]]
+    comps[3*i - 2] <- b1
+    comps[3*i - 1] <- b2
+    comps[3*i] <- b3
+  }
+  for (n in 1:(nrow(init_5))) {
+    for (row in 1:(length(comps)/3)) {
+      mismatch = FALSE
+      for (x in 1:3) {
+        if (init_5[n,x][[1]] != comps[3*row + x - 3]) {
+          mismatch = TRUE
+          break
+        }
+      }
+      if(!mismatch) {
+        ex_val[length(ex_val) + 1] <- init_5[n,8][[1]]
+        ex_row[length(ex_row) + 1] <- row
+      }
+    }
+  }
+  output <- tibble(row = ex_row,
+                   duration = ex_val)
+  write_csv(output, file_names[f + (length(file_names)/2)])
+}
+# Box plot data
+```
+
+Additional data for including the brawlers that the Top 5 comps consisted of [NOT FINISHED]
+
+```{r}
+for (i in map_list) {
+  top_5 <- team_comps %>%
+    filter(map == i) %>%
+    count(brawler_1, brawler_2, brawler_3) %>%
+    arrange(desc(n)) %>%
+    head(n = 5) %>%
+    mutate(map = i)
+  print(top_5)
+}
+
+top_5 <- team_comps %>%
+    count(brawler_1, brawler_2, brawler_3) %>%
+    arrange(desc(n)) %>%
+    head(n = 5) %>%
+    mutate(map = "ALL")
+
+print(top_5)
+```
+
+# Additional data for finding the average of duration data
+
+```{r}
+avg_duration = c()
+for (n in 1:(nrow(top_5))) {
+  sum_duration = 0
+  for (i in 1:(nrow(team_comps))) {
+    if (team_comps[i,1] == top_5[n,1] &
+        team_comps[i,2] == top_5[n,2] &
+        team_comps[i,3] == top_5[n,3]) {
+      sum_duration = sum_duration + team_comps[i,8][[1]]
+    }
+  }
+  avg_duration[n] = sum_duration/(top_5[n,4][[1]])
+}
+
+time_top_5 <- top_5 %>%
+  mutate(duration = as.integer(avg_duration),
+         group = seq(1:5))
+
+# runtime: 6m 40s
+
+# ggplot(data = time_top_5, aes(x = group, y = duration)) +
+#   geom_col()
+```
+
+# Was intended to find usage/win rates for every brawler on every map, but we needed to grab the durations of the matches as well and that just isn't feasible. Run Time would take an eternity.
+Abandoned
+
+```{r}
+b_cnt = c()
+b_wr = c()
+for (r in 1:(nrow(team_comps %>% count(ranked)))) {
+  for (m in 1:(nrow(team_comps %>% count(map)))) {
+    for (i in 1:(length(brawlers)*r*m)) {
+      b_cnt[i] <- 0
+      b_wr[i] <- 0
+    }
+  }
+}
+
+
+for (row in 1:(nrow(plot_siege2))) {
+  b1_cnt = c(2*row - 1, 1)
+  b2_cnt = c(2*row - 1, 2)
+  b3_cnt = c(2*row - 1, 3)
+  b4_cnt = c(2*row, 1)
+  b5_cnt = c(2*row, 2)
+  b6_cnt = c(2*row, 3)
+  
+  ranked = team_comps[2*row, 7][[1]]
+  map = team_comps[2*row, 6][[1]]
+  ranked_index = which(ranked_list == ranked)
+  map_index = which(map_list == map)
+  
+  hit_list = c()
+  oppo_list = c()
+  for (check_1 in list(b1_cnt, b2_cnt, b3_cnt)) {
+    for (check_2 in list(b4_cnt, b5_cnt, b6_cnt)) {
+      if (team_comps[check_1[1], check_1[2]][[1]] == team_comps[check_2[1], check_2[2]][[1]]) {
+      # If there is a mirror brawler
+        for (match in list(check_1, check_2)) {
+          no_copy = TRUE
+          for (hit in hit_list) {
+            if (hit[1] == match[1] & hit[2] == match[2]) {
+              no_copy = FALSE
+            }
+          }
+          if (no_copy) {
+            hit_list[length(hit_list) + 1] <- list(match)
+          }
+        }
+      }
+    }
+  }
+  for (r in (2*row - 1):(2*row)) {
+    for (n in 1:3) {
+      pair = 0
+      for (len in 1:(length(hit_list))) {
+        if (is.null(hit_list)) {
+          pair = pair + 1
+        } else if (hit_list[len][[1]][1] != r | hit_list[len][[1]][2] != n) {
+          pair = pair + 1
+        }
+      }
+      if (pair >= 2) {
+        oppo_list[length(oppo_list) + 1] <- r
+        oppo_list[length(oppo_list) + 1] <- n
+      }
+    }
+  }
+  for (b in 1:(length(oppo_list)/2)) {
+    b_index = which(alpha_list == team_comps[oppo_list[2*b - 1], oppo_list[2*b]][[1]])
+    rMult_index = (length(alpha_list))*(ranked_index - 1)
+    mMult_index = (length(alpha_list))*(length(ranked_list))*(map_index - 1)
+    final_index = b_index + rMult_index + mMult_index
+
+    b_cnt[final_index] <- b_cnt[final_index] + 1
+    # brawler count
+    if(team_comps[oppo_list[2*b - 1], 5][[1]] == 1) {
+      b_wr[final_index] <- b_wr[final_index] + 1
+    }
+    # win_rate count
+  }
+}
+# runtime: 2m 30s
+
+b_wr2 = c()
+for (i in 1:(length(b_wr))) {
+  if (is.nan(b_wr[i]/b_cnt[i])) {
+    b_wr2[i] <- 0
+  } else {
+    b_wr2[i] <- b_wr[i]/b_cnt[i]
+  }
+}
+
+find_specifics <- function(dataset, ranked, map) {
+  ranked = which(ranked_list == ranked)
+  map = which(map_list == map)
+  b_num = length(brawlers)
+  rMult_index = b_num*(ranked - 1)
+  mMult_index = b_num*(length(ranked_list))*(map - 1)
+  
+  start = 1 + rMult_index + mMult_index
+  end = b_num + rMult_index + mMult_index
+  dataset[start:end]
+}
+
+find_specifics(b_cnt, "ranked", "Bot Drop")
+
+# total runtime: 12m 30s
+
+# output %>%
+#   group_by(row) %>%
+#   summarize(duration = as.integer(mean(duration))) %>%
+# ggplot(aes(x = row, y = duration)) +
+#   geom_col()
+# 
+# ggplot(data = output, aes(y = duration)) +
+#   geom_boxplot(aes(group = row))
+# 
+# ggplot(data = output, aes(x = row, y = duration)) +
+#   geom_violin(aes(group = row))
+```
+
+# Grabbing Win Rate data for all maps and all brawlers
+
+Example code for how we grabbed our data
+
+```{r}
+all <- list.files(path="~/Mscs 264 F21/Project/Ian and Swagat/600_Gamemodes/July 2021/", pattern=NULL, all.files=FALSE,
+    full.names=FALSE)
+
+csvs <- list.files(path="~/Mscs 264 F21/Project/Ian and Swagat/600_Gamemodes/July 2021/", pattern=".csv", all.files=FALSE,
+    full.names=FALSE)
+
+NonCSV = c()
+cnt = 1
+for (i in all) {
+  notCSV = TRUE
+  for (j in csvs) {
+    if (i == j) {
+      notCSV = FALSE
+    }
+  }
+  if (notCSV) {
+    NonCSV[cnt] <- i
+    cnt = cnt + 1
+  }
+}
+
+
+csv_list = c()
+cnt1 = 1
+for (file in NonCSV) {
+  list_name = str_c(file, "_list")
+  path_name = str_c("~/Mscs 264 F21/Project/Ian and Swagat/600_Gamemodes/July 2021/", file, "/")
+  
+  list_name <- list.files(path=path_name, pattern=".csv", all.files=FALSE, full.names=FALSE)
+  
+  csv_list[cnt1] <- list(list_name)
+  cnt1 = cnt1 + 1
+}
+
+List_of_lists = c()
+for (n in 1:(length(csv_list))) {
+  gamemode_path = NonCSV[n]
+  gamemode = str_replace_all(NonCSV[n], "-", "_")
+  for (i in csv_list[[n]]) {
+    map = str_replace_all(str_replace(i, ".csv", ""), "-", "_")
+    data <- read_csv(str_c("~/Mscs 264 F21/Project/Ian and Swagat/600_Gamemodes/July 2021/", gamemode_path, "/", i))
+
+    data <- data %>% 
+      select(1,5:8) %>%
+      mutate(map, gamemode)
+    
+    List_of_lists <- rbind(data, List_of_lists)
+  }
+}
+```
+
+Exact code from my computer
+```{r}
+months <- list.files(path="C:/Users/IBins/Desktop/Everything Folder/Coding/BS3", pattern=NULL, all.files=FALSE,
+    full.names=FALSE)
+
+for (month in months) {
+  Ultimate_path = str_c("C:/Users/IBins/Desktop/Everything Folder/Coding/BS3/", month, "/600/rates/")
+  
+  all <- list.files(path=Ultimate_path, pattern=NULL, all.files=FALSE,
+    full.names=FALSE)
+  all <- all[which(str_detect(all, ".json")) * -1]
+
+  csvs <- list.files(path=Ultimate_path, pattern=".csv", all.files=FALSE,
+    full.names=FALSE)
+
+  NonCSV = c()
+  cnt = 1
+  for (i in all) {
+    notCSV = TRUE
+    for (j in csvs) {
+      if (i == j) {
+        notCSV = FALSE
+      }
+    }
+    if (notCSV) {
+      NonCSV[cnt] <- i
+      cnt = cnt + 1
+    }
+  }
+
+
+  csv_list = c()
+  cnt1 = 1
+  for (file in NonCSV) {
+    list_name = str_c(file, "_list")
+    path_name = str_c(Ultimate_path, file, "/")
+  
+    list_name <- list.files(path=path_name, pattern=".csv", all.files=FALSE, full.names=FALSE)
+
+    csv_list[cnt1] <- list(list_name)
+    cnt1 = cnt1 + 1
+  }
+
+  List_of_lists = c()
+  for (n in 1:(length(csv_list))) {
+    gamemode_path = NonCSV[n]
+    gamemode = str_replace_all(NonCSV[n], "-", "_")
+    for (i in csv_list[[n]]) {
+      map = str_replace_all(str_replace(i, ".csv", ""), "-", "_")
+      data <- read_csv(str_c(Ultimate_path, gamemode_path, "/", i))
+
+      data <- data %>% 
+        select(1,5:8) %>%
+        mutate(map, gamemode)
+    
+      List_of_lists <- rbind(data, List_of_lists)
+    }
+  }
+}
+```
+
+initial set up parameters - Part 3
+```{r}
+AlmightyList <- read.csv("~/Mscs 264 F21/Project/Ian and Swagat/Almighty_List.csv")
+
+names(AlmightyList)
+
+AlmightyList %>% select(month) %>% unique()
+
+test <- AlmightyList %>% filter(month == "2021 July")
+test2 <- as.tibble(test)
+
+test2 %>%
+  filter(gamemode == "siege") %>%
+  select(-1) %>%
+  group_by(brawler) %>%
+  summarise(usage = sum(usage)) %>%
+ggplot(aes(x = fct_reorder(brawler, usage), y = usage)) +
+  geom_point() +
+  coord_flip()
+
+test2 %>%
+  filter(gamemode == "volley_brawl",
+         !is.na(usage)) %>%
+  select(-1) %>%
+  group_by(brawler) %>%
+  summarise(usage = sum(usage)) %>%
+  arrange(desc(usage)) %>%
+  head(n, n = 10) %>%
+ggplot(aes(x = fct_reorder(brawler, usage), y = usage)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+
+test2 %>%
+  filter(gamemode == "volley_brawl",
+         !is.na(usage)) %>%
+  select(-1) %>%
+  group_by(brawler) %>%
+  summarise(win = sum(win),
+            usage= sum(usage),
+            win_rate = win/usage) %>%
+  arrange(desc(usage)) %>%
+  head(n, n = 10) %>%
+ggplot(aes(x = fct_reorder(brawler, usage), y = usage, fill = win_rate)) +
+  geom_col() +
+  coord_flip()
+
+test2 %>% select("gamemode") %>% unique()
+as_tibble(AlmightyList) %>% select("month") %>% unique() %>% print(n = Inf)
+c(mdy("July 16th 2021"), mdy("January 2nd 2021"), mdy("February 27th 2021"), mdy("April 21st 2021"), mdy("October 26th 2020"), mdy("November 7th 2020"), mdy("May 23rd 2020"), mdy("May 17th 2020"), mdy("March 23rd 2020"), mdy("March 8th 2020"), mdy("June 1st 2020"), mdy("July 18th 2020"), mdy("July 1st 2020"), mdy("January 27th 2020"), mdy("January 13th 2020"), mdy("February 23rd 2020"), mdy("February 14th 2020"), mdy("April 20th 2020"), mdy("April 6th 2020"), mdy("November 18th 2019"), mdy("December 30th 2019"), mdy("December 24th 2019"), mdy("December 16th 2019"), mdy("December 2nd 2019"))
+
+test2 %>%
+  filter(gamemode == "siege") %>%
+  select(-1) %>%
+  group_by(brawler) %>%
+  summarise(usage, map)
+```
+
